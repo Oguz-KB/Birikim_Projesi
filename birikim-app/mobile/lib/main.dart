@@ -214,9 +214,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showGoalDialog() {
-    final nameCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
+  void _showGoalDialog({GoalOut? existingGoal}) {
+    final nameCtrl = TextEditingController(text: existingGoal?.name ?? '');
+    final amountCtrl = TextEditingController(text: existingGoal?.targetAmount.toStringAsFixed(0) ?? '');
+    final imageCtrl = TextEditingController(text: existingGoal?.imageUrl ?? '');
     final formKey = GlobalKey<FormState>();
     bool isSaving = false;
 
@@ -227,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Yeni Bir Hedef Belirle 🎯'),
+              title: Text(existingGoal == null ? 'Yeni Bir Hedef Belirle 🎯' : 'Hedefi Düzenle 🎯'),
               content: Form(
                 key: formKey,
                 child: Column(
@@ -245,6 +246,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       keyboardType: TextInputType.number,
                       validator: (v) => v!.isEmpty ? 'Boş bırakılamaz' : null,
                     ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: imageCtrl,
+                      decoration: const InputDecoration(labelText: 'Hedef Görseli (URL) - İsteğe Bağlı'),
+                    ),
                   ],
                 ),
               ),
@@ -259,10 +265,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (formKey.currentState!.validate()) {
                       setDialogState(() => isSaving = true);
                       try {
-                        await _apiClient.createGoal(GoalCreate(
-                          name: nameCtrl.text,
-                          targetAmount: double.parse(amountCtrl.text),
-                        ));
+                        if (existingGoal == null) {
+                          await _apiClient.createGoal(GoalCreate(
+                            name: nameCtrl.text,
+                            targetAmount: double.parse(amountCtrl.text),
+                            imageUrl: imageCtrl.text.isNotEmpty ? imageCtrl.text : null,
+                          ));
+                        } else {
+                          await _apiClient.updateGoal(existingGoal.id, GoalUpdate(
+                            name: nameCtrl.text,
+                            targetAmount: double.parse(amountCtrl.text),
+                            imageUrl: imageCtrl.text.isNotEmpty ? imageCtrl.text : null,
+                          ));
+                        }
                         if (mounted) Navigator.pop(context);
                         _loadData();
                       } catch (e) {
@@ -281,6 +296,33 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  void _handleGoalAction(String action) async {
+    if (_activeGoal == null) return;
+    
+    if (action == 'edit') {
+      _showGoalDialog(existingGoal: _activeGoal);
+    } else if (action == 'delete') {
+      await _apiClient.deleteGoal(_activeGoal!.id);
+      _loadData();
+    } else if (action == 'purchase') {
+      if (_totalSavings >= _activeGoal!.targetAmount) {
+        // Buy goal
+        setState(() => _isLoading = true);
+        try {
+          await _apiClient.withdrawSavings(_activeGoal!.targetAmount, goalId: _activeGoal!.id);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tebrikler! Hedefine ulaştın ve satın aldın! 🎉'), backgroundColor: Colors.green));
+          }
+        } catch (e) {
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+        _loadData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bu hedefi almak için henüz yeterli birikimin yok! 😢')));
+      }
+    }
   }
 
   Widget _buildGamificationSection() {
@@ -307,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: _showGoalDialog,
+              onPressed: () => _showGoalDialog(),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.purple, foregroundColor: Colors.white),
               child: const Text('Hedef Koy'),
             ),
@@ -349,12 +391,11 @@ class _HomeScreenState extends State<HomeScreen> {
         // Parse error, ignore estimation
       }
     } else if (progress >= 1.0) {
-      estimationText = '🎉 Tebrikler! Hedefine ulaştın!';
+      estimationText = '🎉 Tebrikler! Hedefine ulaştın! Menüden hedefini satın alabilirsin.';
     }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -366,14 +407,47 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Hedefim: ${_activeGoal!.name} 🎯', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text('%${(progress * 100).toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16)),
-            ],
-          ),
-          const SizedBox(height: 12),
+          if (_activeGoal!.imageUrl != null && _activeGoal!.imageUrl!.isNotEmpty)
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              child: Image.network(
+                _activeGoal!.imageUrl!,
+                width: double.infinity,
+                height: 120,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 40,
+                  color: Colors.grey.shade200,
+                  child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text('Hedefim: ${_activeGoal!.name} 🎯', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                    Text('%${(progress * 100).toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 16)),
+                    PopupMenuButton<String>(
+                      onSelected: _handleGoalAction,
+                      itemBuilder: (BuildContext context) {
+                        return [
+                          const PopupMenuItem(value: 'edit', child: Text('Düzenle')),
+                          if (progress >= 1.0)
+                            const PopupMenuItem(value: 'purchase', child: Text('Satın Aldım! 🎉', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))),
+                          const PopupMenuItem(value: 'delete', child: Text('Sil', style: TextStyle(color: Colors.red))),
+                        ];
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
@@ -407,27 +481,97 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ],
       ),
+    ),
+        ],
+      ),
+    );
+  }
+
+  void _showWithdrawDialog() {
+    final amountCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Birikimden Para Çek 💸'),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Topladığın birikimlerden harcamak istediğin tutarı gir. Bu işlem toplam birikimini düşürecektir.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: amountCtrl,
+                      decoration: const InputDecoration(labelText: 'Çekilecek Tutar (TL)', suffixText: 'TL'),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Boş bırakılamaz';
+                        final val = double.tryParse(v);
+                        if (val == null || val <= 0) return 'Geçerli bir tutar girin';
+                        if (val > _totalSavings) return 'Yetersiz bakiye';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                if (!isSaving)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('İptal'),
+                  ),
+                ElevatedButton(
+                  onPressed: isSaving ? null : () async {
+                    if (formKey.currentState!.validate()) {
+                      setDialogState(() => isSaving = true);
+                      try {
+                        await _apiClient.withdrawSavings(double.parse(amountCtrl.text));
+                        if (mounted) Navigator.pop(context);
+                        _loadData();
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                      }
+                    }
+                  },
+                  child: isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Onayla'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildSavingsDashboard() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(16.0),
-      padding: const EdgeInsets.all(24.0),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withOpacity(0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return InkWell(
+      onTap: _showWithdrawDialog,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF43A047), Color(0xFF1B5E20)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
         ],
       ),
       child: Column(
@@ -456,6 +600,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

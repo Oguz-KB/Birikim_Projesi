@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Numeric, ForeignKey, DateTime, func
+from sqlalchemy import Column, String, Numeric, ForeignKey, DateTime, Boolean, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -11,6 +11,8 @@ class Goal(Base):
     owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
     target_amount = Column(Numeric(12, 2), nullable=False)
+    image_url = Column(String, nullable=True)
+    is_completed = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     owner = relationship("User", back_populates="goals")

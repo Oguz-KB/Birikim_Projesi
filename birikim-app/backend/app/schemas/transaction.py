@@ -7,6 +7,10 @@ class TransactionCreate(BaseModel):
     category_id: UUID4
     raw_amount: Decimal
 
+class WithdrawCreate(BaseModel):
+    amount: Decimal
+    goal_id: Optional[UUID4] = None
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

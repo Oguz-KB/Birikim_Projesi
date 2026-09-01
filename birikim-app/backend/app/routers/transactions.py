@@ -5,7 +5,7 @@ from typing import List, Union
 from pydantic import UUID4
 
 from app.db import get_db
-from app.schemas.transaction import TransactionCreate, TransactionOut
+from app.schemas.transaction import TransactionCreate, TransactionOut, WithdrawCreate
 from app.schemas.pending_purchase import PendingPurchaseOut
 import app.models as models
 from app.rule_engine import (
@@ -94,3 +94,52 @@ def get_transactions(
     stmt = select(models.Transaction).where(models.Transaction.user_id == x_user_id).offset(skip).limit(limit)
     transactions = db.execute(stmt).scalars().all()
     return transactions
+
+@router.post("/withdraw", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
+def withdraw_savings(
+    withdraw: WithdrawCreate,
+    x_user_id: UUID4 = Header(...),
+    db: Session = Depends(get_db)
+):
+    # Fetch active user settings to link the transaction
+    stmt_settings = select(models.UserRuleSettings).where(
+        models.UserRuleSettings.user_id == x_user_id,
+        models.UserRuleSettings.valid_to.is_(None)
+    )
+    user_settings = db.execute(stmt_settings).scalar_one_or_none()
+    
+    if not user_settings:
+        raise HTTPException(status_code=404, detail="Active user settings not found")
+        
+    # We need a dummy category for withdrawals, or we can use the first category available
+    # A cleaner way is to create a "Withdrawal" category, but for now we can just pick the first global category.
+    # In Phase 2 we will clean up categories. Let's just get any category.
+    stmt_cat = select(models.Category).limit(1)
+    category = db.execute(stmt_cat).scalar_one_or_none()
+    
+    if not category:
+        raise HTTPException(status_code=404, detail="No category found")
+
+    new_tx = models.Transaction(
+        user_id=x_user_id,
+        category_id=category.id,
+        raw_amount=0,  # It's not a real expense
+        self_tax_amount=0,
+        roundup_amount=0,
+        total_diverted=-abs(withdraw.amount),  # Negative value deducts from total savings
+        rule_settings_id=user_settings.id,
+        source='self_tax',  # Using 'self_tax' to satisfy DB CheckConstraint ("source IN ('self_tax', 'abandoned_purchase')")
+        goal_id=withdraw.goal_id
+    )
+    
+    db.add(new_tx)
+    
+    if withdraw.goal_id:
+        goal = db.get(models.Goal, withdraw.goal_id)
+        if goal and goal.owner_user_id == x_user_id:
+            goal.is_completed = True
+            
+    db.commit()
+    db.refresh(new_tx)
+    
+    return new_tx

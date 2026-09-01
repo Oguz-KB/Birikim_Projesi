@@ -160,6 +160,56 @@ class ApiClient {
     }
   }
 
+  Future<GoalOut> updateGoal(String goalId, GoalUpdate update) async {
+    final response = await client.put(
+      Uri.parse('$baseUrl/goals/$goalId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': mockUserId,
+      },
+      body: jsonEncode(update.toJson()),
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      return GoalOut.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to update goal');
+    }
+  }
+
+  Future<void> deleteGoal(String goalId) async {
+    final response = await client.delete(
+      Uri.parse('$baseUrl/goals/$goalId'),
+      headers: {
+        'x-user-id': mockUserId,
+      },
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete goal');
+    }
+  }
+
+  Future<TransactionOut> withdrawSavings(double amount, {String? goalId}) async {
+    final Map<String, dynamic> body = {'amount': amount};
+    if (goalId != null) body['goal_id'] = goalId;
+
+    final response = await client.post(
+      Uri.parse('$baseUrl/transactions/withdraw'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': mockUserId,
+      },
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 201) {
+      return TransactionOut.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to withdraw savings: ${response.statusCode}');
+    }
+  }
+
   Future<dynamic> createTransaction(TransactionCreate tx) async {
     try {
       final response = await client.post(
