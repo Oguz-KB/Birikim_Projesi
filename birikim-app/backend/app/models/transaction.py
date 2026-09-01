@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Numeric, ForeignKey, DateTime, func
+from sqlalchemy import Column, Numeric, ForeignKey, DateTime, func, String, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -14,10 +14,15 @@ class Transaction(Base):
     self_tax_amount = Column(Numeric(12, 2), nullable=False)
     roundup_amount = Column(Numeric(12, 2), nullable=False, default=0)
     total_diverted = Column(Numeric(12, 2), nullable=False)
+    source = Column(String, nullable=False, default='self_tax', server_default='self_tax')
     rule_settings_id = Column(UUID(as_uuid=True), ForeignKey("user_rule_settings.id"), nullable=False)
     goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True)
     reversal_of = Column(UUID(as_uuid=True), ForeignKey("transactions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint("source IN ('self_tax', 'abandoned_purchase')", name="transactions_source_check"),
+    )
 
     user = relationship("User", back_populates="transactions")
     category = relationship("Category", back_populates="transactions")

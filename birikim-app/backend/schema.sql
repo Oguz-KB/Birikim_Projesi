@@ -53,12 +53,13 @@ CREATE TABLE transactions (
     user_id             UUID NOT NULL REFERENCES users(id),
     category_id         UUID NOT NULL REFERENCES categories(id),
     raw_amount          NUMERIC(12,2) NOT NULL,   -- gerçek harcama tutarı
-    self_tax_amount     NUMERIC(12,2) NOT NULL,   -- hesaplanan öz-vergi (çarpan uygulanmış)
-    roundup_amount      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    self_tax_amount     NUMERIC(12,2) NOT NULL,   -- Kendine vergi kesintisi
+    roundup_amount      NUMERIC(12,2) NOT NULL DEFAULT 0, -- Yuvarlama kesintisi
     total_diverted      NUMERIC(12,2) NOT NULL,   -- self_tax_amount + roundup_amount
-    rule_settings_id    UUID NOT NULL REFERENCES user_rule_settings(id), -- hangi kural setiyle hesaplandı
-    goal_id             UUID REFERENCES goals(id),
-    reversal_of         UUID REFERENCES transactions(id), -- iptal ise orijinal kaydı gösterir
+    source              TEXT NOT NULL DEFAULT 'self_tax' CHECK (source IN ('self_tax', 'abandoned_purchase')), -- İşlemin kaynağı
+    rule_settings_id    UUID NOT NULL REFERENCES user_rule_settings(id), -- Hangi kuralla hesaplandı
+    goal_id             UUID REFERENCES goals(id), -- Eğer belirli bir hedefe aktarıldıysa
+    reversal_of         UUID REFERENCES transactions(id), -- İade işlemiyse, orijinal işlemin ID'sini gösterir
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
