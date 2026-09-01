@@ -45,3 +45,11 @@ def update_user_settings(user_id: UUID4, update_data: UserRuleSettingsUpdate, db
     db.commit()
     db.refresh(new_settings)
     return new_settings
+
+@router.post("/{user_id}/reset")
+def reset_user_data(user_id: UUID4, db: Session = Depends(get_db)):
+    # Kullanıcının tüm işlemlerini ve bekleyen harcamalarını sil
+    db.execute(models.PendingPurchase.__table__.delete().where(models.PendingPurchase.user_id == user_id))
+    db.execute(models.Transaction.__table__.delete().where(models.Transaction.user_id == user_id))
+    db.commit()
+    return {"status": "ok", "message": "Tüm veriler sıfırlandı"}

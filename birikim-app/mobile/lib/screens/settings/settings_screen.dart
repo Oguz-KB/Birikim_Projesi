@@ -270,6 +270,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             : const Text('Ayarları Kaydet', style: TextStyle(fontSize: 18)),
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(
+                      'Tehlikeli Alan', 
+                      Colors.red,
+                      'Bu işlem tüm harcama geçmişini ve birikimlerini kalıcı olarak siler!',
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Tüm Verileri Sıfırla?'),
+                              content: const Text('Geçmişteki tüm harcamaların, birikimlerin ve bekleme odandaki ürünler silinecek. Bu işlem geri alınamaz! Emin misin?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    setState(() => _isSaving = true);
+                                    try {
+                                      await _apiClient.resetUserData();
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tüm veriler sıfırlandı!')));
+                                        Navigator.pop(context); // Go back to Home
+                                      }
+                                    } catch (e) {
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                                    } finally {
+                                      if (mounted) setState(() => _isSaving = false);
+                                    }
+                                  },
+                                  child: const Text('Evet, Her Şeyi Sil'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.delete_forever),
+                        label: const Text('Uygulamayı Sıfırla (Reset)'),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),

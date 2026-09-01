@@ -10,6 +10,8 @@ import 'services/api_client.dart';
 import 'models/transaction.dart';
 import 'models/pending_purchase.dart';
 import 'models/goal.dart';
+import 'models/analytics_summary.dart';
+import 'screens/analytics/analytics_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<TransactionOut> _transactions = [];
   List<PendingPurchaseOut> _pendingPurchases = [];
   GoalOut? _activeGoal;
+  AnalyticsSummary? _analyticsSummary;
   double _totalSavings = 0.0;
   bool _isLoading = true;
   int _currentIndex = 0;
@@ -90,6 +93,17 @@ class _HomeScreenState extends State<HomeScreen> {
         _totalSavings = calculatedSavings;
         _isLoading = false;
       });
+
+      try {
+        final summary = await _apiClient.getAnalyticsSummary();
+        if (mounted) {
+          setState(() {
+            _analyticsSummary = summary;
+          });
+        }
+      } catch (e) {
+        // Ignore analytics fetch error
+      }
     }
   }
 
@@ -360,37 +374,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final double progress = (_totalSavings / _activeGoal!.targetAmount).clamp(0.0, 1.0);
     
-    String estimationText = '';
-    if (_transactions.isNotEmpty && _totalSavings > 0 && progress < 1.0) {
-      try {
-        final oldestDate = DateTime.parse(_transactions.last.createdAt);
-        int daysPassed = DateTime.now().difference(oldestDate).inDays;
-        
-        if (daysPassed < 7) {
-          estimationText = '⏳ Sağlıklı bir tahmin yapabilmemiz için alışkanlıklarını analiz ediyoruz. (Tahmin için kalan süre: ${7 - daysPassed} gün)';
-        } else {
-          final double dailyAverage = _totalSavings / daysPassed;
-          final double remainingAmount = _activeGoal!.targetAmount - _totalSavings;
-          
-          if (dailyAverage > 0) {
-            final int remainingDays = (remainingAmount / dailyAverage).ceil();
-            int months = remainingDays ~/ 30;
-            int days = remainingDays % 30;
-            
-            String timeText = '';
-            if (months > 0) {
-              timeText = '$months ay ${days > 0 ? '$days gün' : ''}';
-            } else {
-              timeText = '$remainingDays gün';
-            }
-            
-            estimationText = '💡 Şu anki hızınla (günde ortalama ${dailyAverage.toStringAsFixed(0)} TL) hedefine $timeText sonra ulaşacaksın!';
-          }
-        }
-      } catch (e) {
-        // Parse error, ignore estimation
-      }
-    } else if (progress >= 1.0) {
+    String estimationText = _analyticsSummary?.projectionText ?? '';
+    
+    if (progress >= 1.0) {
       estimationText = '🎉 Tebrikler! Hedefine ulaştın! Menüden hedefini satın alabilirsin.';
     }
 
@@ -645,7 +631,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: _currentIndex == 1 ? null : AppBar(
         title: Text(_currentIndex == 0 ? 'Ana Ekran' : 'Kayıtlar'),
         actions: [
           IconButton(
@@ -660,16 +646,26 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : _currentIndex == 0 ? _buildHomeTab() : _buildRecordsTab(),
+          : _currentIndex == 0 
+              ? _buildHomeTab() 
+              : _currentIndex == 1
+                  ? (_analyticsSummary != null ? AnalyticsScreen(summary: _analyticsSummary!) : const Center(child: CircularProgressIndicator()))
+                  : _buildRecordsTab(),
       floatingActionButton: _currentIndex == 0 ? FloatingActionButton(
         onPressed: _openExpenseEntry,
         child: const Icon(Icons.add),
       ) : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Ana Ekran'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'İstatistik'),
           BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Kayıtlar'),
         ],
       ),

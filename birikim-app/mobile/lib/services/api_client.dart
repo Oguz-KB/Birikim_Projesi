@@ -6,6 +6,7 @@ import '../models/pending_purchase.dart';
 import '../models/category.dart';
 import '../models/rule_settings.dart';
 import '../models/goal.dart';
+import '../models/analytics_summary.dart';
 import 'database_helper.dart';
 
 class ApiClient {
@@ -97,6 +98,29 @@ class ApiClient {
 
     if (response.statusCode != 204) {
       throw Exception('Failed to delete category');
+    }
+  }
+
+  Future<AnalyticsSummary> getAnalyticsSummary() async {
+    final response = await client.get(
+      Uri.parse('$baseUrl/analytics/summary'),
+      headers: {'x-user-id': mockUserId},
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      return AnalyticsSummary.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load analytics summary');
+    }
+  }
+
+  Future<void> resetUserData() async {
+    final response = await client.post(
+      Uri.parse('$baseUrl/users/$mockUserId/reset'),
+      headers: {'x-user-id': mockUserId},
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to reset data');
     }
   }
 
