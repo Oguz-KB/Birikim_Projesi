@@ -17,6 +17,7 @@ class User(Base):
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     pending_purchases = relationship("PendingPurchase", back_populates="user", cascade="all, delete-orphan")
     goal_memberships = relationship("GoalMember", back_populates="user", cascade="all, delete-orphan")
+    categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
 
 class UserRuleSettings(Base):
     __tablename__ = "user_rule_settings"

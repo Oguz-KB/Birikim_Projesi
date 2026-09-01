@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../models/rule_settings.dart';
+import 'categories_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -145,6 +146,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.blue.shade100,
+                          child: const Icon(Icons.category, color: Colors.blue),
+                        ),
+                        title: const Text('Kategorileri ve Zaafları Yönet'),
+                        subtitle: const Text('Kendi harcama kategorilerini ve ceza çarpanlarını belirle.'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const CategoriesSettingsScreen()),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     _buildSectionHeader(
                       'Ceza ve Birikim Oranları', 
                       Colors.green,

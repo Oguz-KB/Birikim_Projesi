@@ -18,7 +18,10 @@ class ApiClient {
 
   Future<List<Category>> getCategories() async {
     try {
-      final response = await client.get(Uri.parse('$baseUrl/categories')).timeout(const Duration(seconds: 5));
+      final response = await client.get(
+        Uri.parse('$baseUrl/categories'),
+        headers: {'x-user-id': mockUserId},
+      ).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         
@@ -45,6 +48,55 @@ class ApiClient {
         isGuiltyPleasure: c['is_guilty_pleasure'] == 1,
         penaltyMultiplier: c['penalty_multiplier'].toString(),
       )).toList();
+    }
+  }
+
+  Future<Category> createCategory(CategoryCreate category) async {
+    final response = await client.post(
+      Uri.parse('$baseUrl/categories/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': mockUserId,
+      },
+      body: jsonEncode(category.toJson()),
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 201) {
+      return Category.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body)['detail'] ?? 'Failed to create category';
+      throw Exception(error);
+    }
+  }
+
+  Future<Category> updateCategory(String categoryId, CategoryUpdate update) async {
+    final response = await client.put(
+      Uri.parse('$baseUrl/categories/$categoryId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': mockUserId,
+      },
+      body: jsonEncode(update.toJson()),
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      return Category.fromJson(jsonDecode(response.body));
+    } else {
+      final error = jsonDecode(response.body)['detail'] ?? 'Failed to update category';
+      throw Exception(error);
+    }
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    final response = await client.delete(
+      Uri.parse('$baseUrl/categories/$categoryId'),
+      headers: {
+        'x-user-id': mockUserId,
+      },
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete category');
     }
   }
 
