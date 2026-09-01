@@ -1,0 +1,258 @@
+import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
+import '../../models/rule_settings.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final ApiClient _apiClient = ApiClient();
+  final _formKey = GlobalKey<FormState>();
+
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  late TextEditingController _taxRateCtrl;
+  late TextEditingController _thresholdCtrl;
+  late TextEditingController _hoursCtrl;
+  
+  bool _roundupEnabled = false;
+  double _selectedRoundupUnit = 10.0;
+  final List<double> _roundupOptions = [10.0, 50.0, 100.0];
+
+  @override
+  void initState() {
+    super.initState();
+    _taxRateCtrl = TextEditingController();
+    _thresholdCtrl = TextEditingController();
+    _hoursCtrl = TextEditingController();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final settings = await _apiClient.getUserSettings();
+      if (mounted) {
+        setState(() {
+          _taxRateCtrl.text = (settings.selfTaxRate * 100).toStringAsFixed(0);
+          _thresholdCtrl.text = settings.waitingRoomThreshold.toStringAsFixed(0);
+          _hoursCtrl.text = settings.waitingRoomHours.toString();
+          
+          _selectedRoundupUnit = settings.roundupUnit;
+          if (!_roundupOptions.contains(_selectedRoundupUnit)) {
+            _selectedRoundupUnit = 10.0;
+          }
+          _roundupEnabled = settings.roundupEnabled;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ayarlar yüklenemedi: $e'), backgroundColor: Colors.red),
+        );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+    
+    try {
+      final update = UserRuleSettingsUpdate(
+        selfTaxRate: double.parse(_taxRateCtrl.text) / 100,
+        waitingRoomThreshold: double.parse(_thresholdCtrl.text),
+        waitingRoomHours: int.parse(_hoursCtrl.text),
+        roundupUnit: _selectedRoundupUnit,
+        roundupEnabled: _roundupEnabled,
+      );
+
+      await _apiClient.updateUserSettings(update);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ayarlar başarıyla kaydedildi! ⚙️'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kaydedilirken hata oluştu: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _taxRateCtrl.dispose();
+    _thresholdCtrl.dispose();
+    _hoursCtrl.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSectionHeader(String title, Color color, String infoText) {
+    return Row(
+      children: [
+        Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        const SizedBox(width: 4),
+        IconButton(
+          icon: Icon(Icons.info_outline, color: color, size: 22),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(title, style: TextStyle(color: color)),
+                content: Text(infoText),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Anladım'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Kuralları Kişiselleştir'),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      'Ceza ve Birikim Oranları', 
+                      Colors.green,
+                      'Bu oran, yaptığın harcamalarda veya bekleme odasından almayı seçtiğin ürünlerde sana ne kadar ceza (kendine vergi) kesileceğini belirler. Örneğin %10 seçersen, 100 TL harcadığında 10 TL kumbarana gider.',
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _taxRateCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Ceza Oranı Yüzdesi (%)',
+                        hintText: 'Örn: 10',
+                        border: OutlineInputBorder(),
+                        suffixText: '%',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Bu alan boş bırakılamaz';
+                        if (double.tryParse(value) == null) return 'Geçerli bir sayı girin';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader(
+                      'Bekleme Odası Kuralları', 
+                      Colors.orange,
+                      'Pahalı harcamaları anında yapmak yerine bir süre ertelemek iradeni güçlendirir. Belirlediğin limitin (Örn: 200 TL) üzerindeki her harcama, belirlediğin saat (Örn: 24) boyunca bekleme odasına alınır. Bu süre sonunda vazgeçersen paran kurtulur!',
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _thresholdCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Bekleme Odası Limiti (TL)',
+                        hintText: 'Örn: 200',
+                        border: OutlineInputBorder(),
+                        suffixText: 'TL',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) => value == null || value.isEmpty ? 'Boş bırakılamaz' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _hoursCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Bekleme Süresi (Saat)',
+                        hintText: 'Örn: 24',
+                        border: OutlineInputBorder(),
+                        suffixText: 'Saat',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) => value == null || value.isEmpty ? 'Boş bırakılamaz' : null,
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader(
+                      'Yuvarlama (Round-up) Ayarları', 
+                      Colors.blue,
+                      'Harcamalarının küsüratlarını belirlediğin birime (10, 50 veya 100 TL) tamamlar. Örneğin 10 TL katlarına yuvarlamayı seçersen, 43 TL harcadığında kartından 50 TL çekilmiş gibi sayılır ve aradaki 7 TL doğrudan birikimine aktarılır.',
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Küsüratları Yuvarla'),
+                      subtitle: const Text('Fazlalığı birikime atar.'),
+                      value: _roundupEnabled,
+                      activeColor: Colors.blue,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (bool value) {
+                        setState(() => _roundupEnabled = value);
+                      },
+                    ),
+                    if (_roundupEnabled) ...[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<double>(
+                        value: _selectedRoundupUnit,
+                        decoration: const InputDecoration(
+                          labelText: 'Yuvarlama Birimi (TL)',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _roundupOptions.map((double value) {
+                          return DropdownMenuItem<double>(
+                            value: value,
+                            child: Text('${value.toStringAsFixed(0)} TL ve katlarına yuvarla'),
+                          );
+                        }).toList(),
+                        onChanged: (double? newValue) {
+                          if (newValue != null) {
+                            setState(() => _selectedRoundupUnit = newValue);
+                          }
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 48),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _isSaving ? null : _saveSettings,
+                        child: _isSaving
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('Ayarları Kaydet', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
