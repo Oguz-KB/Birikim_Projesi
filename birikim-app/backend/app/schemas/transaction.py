@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4, ConfigDict
+from pydantic import BaseModel, UUID4, ConfigDict, field_serializer
 from decimal import Decimal
 from datetime import datetime
 from typing import Optional
@@ -21,3 +21,7 @@ class TransactionOut(BaseModel):
     goal_id: Optional[UUID4] = None
     reversal_of: Optional[UUID4] = None
     created_at: datetime
+
+    @field_serializer("raw_amount", "self_tax_amount", "roundup_amount", "total_diverted")
+    def serialize_decimal(self, value: Decimal, _info) -> str:
+        return str(value)

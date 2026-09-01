@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.routers import transactions, pending_purchases, goals, users
+from app.routers import transactions, pending_purchases, goals, users, categories
 from sqlalchemy import text
 from contextlib import asynccontextmanager
 import asyncio
@@ -19,6 +19,7 @@ app.include_router(transactions.router)
 app.include_router(pending_purchases.router)
 app.include_router(goals.router)
 app.include_router(users.router)
+app.include_router(categories.router)
 
 @app.get("/health")
 def health_check(db: Session = Depends(get_db)):

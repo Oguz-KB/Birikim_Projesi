@@ -1,0 +1,158 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../models/transaction.dart';
+import '../models/pending_purchase.dart';
+import '../models/category.dart';
+import 'database_helper.dart';
+
+class ApiClient {
+  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8000');
+  static const String mockUserId = 'b2839315-a03e-49d5-9469-1ef9132e44fd';
+
+  final http.Client client;
+
+  ApiClient({http.Client? client}) : client = client ?? http.Client();
+
+  Future<List<Category>> getCategories() async {
+    try {
+      final response = await client.get(Uri.parse('$baseUrl/categories')).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        
+        // Cache them for offline use
+        final List<Map<String, dynamic>> cacheData = data.map((e) => {
+          'id': e['id'].toString(),
+          'name': e['name'].toString(),
+          'is_guilty_pleasure': (e['is_guilty_pleasure'] == true || e['is_guilty_pleasure'] == 1) ? 1 : 0,
+          'penalty_multiplier': e['penalty_multiplier'].toString(),
+        }).toList();
+        await DatabaseHelper.instance.saveCategories(cacheData);
+
+        return data.map((json) => Category.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load categories');
+      }
+    } catch (e) {
+      print('ERROR GETTING CATEGORIES: $e');
+      // Offline mode: load from cache
+      final cached = await DatabaseHelper.instance.getCachedCategories();
+      return cached.map((c) => Category(
+        id: c['id'].toString(),
+        name: c['name'].toString(),
+        isGuiltyPleasure: c['is_guilty_pleasure'] == 1,
+        penaltyMultiplier: c['penalty_multiplier'].toString(),
+      )).toList();
+    }
+  }
+
+  Future<List<TransactionOut>> getTransactions() async {
+    try {
+      final response = await client.get(
+        Uri.parse('$baseUrl/transactions/'),
+        headers: {'x-user-id': mockUserId},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => TransactionOut.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load transactions');
+      }
+    } catch (e) {
+      print('ERROR GETTING TRANSACTIONS: $e');
+      return [];
+    }
+  }
+
+  Future<List<PendingPurchaseOut>> getPendingPurchases() async {
+    try {
+      final response = await client.get(
+        Uri.parse('$baseUrl/pending-purchases/'),
+        headers: {'x-user-id': mockUserId},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PendingPurchaseOut.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load pending purchases');
+      }
+    } catch (e) {
+      print('ERROR GETTING PENDING PURCHASES: $e');
+      return [];
+    }
+  }
+
+  Future<dynamic> createTransaction(TransactionCreate tx) async {
+    try {
+      final response = await client.post(
+        Uri.parse('$baseUrl/transactions/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': mockUserId,
+        },
+        body: jsonEncode(tx.toJson()),
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 201) {
+        return TransactionOut.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 202) {
+        return PendingPurchaseOut.fromJson(jsonDecode(response.body));
+      } else {
+        await DatabaseHelper.instance.insertQueue(tx.categoryId, tx.rawAmount);
+        return {'status': 'queued', 'error': 'HTTP ${response.statusCode}'};
+      }
+    } catch (e) {
+      await DatabaseHelper.instance.insertQueue(tx.categoryId, tx.rawAmount);
+      return {'status': 'queued', 'error': e.toString()};
+    }
+  }
+
+  Future<void> syncQueue() async {
+    print('SYNC ÇALIŞTI');
+    try {
+      final connectivityResult = await (Connectivity().checkConnectivity());
+      if (connectivityResult.contains(ConnectivityResult.none)) {
+        print('SYNC IPTAL: Internet yok');
+        return;
+      }
+    } catch (e) {
+      print('Connectivity check failed in syncQueue: $e');
+    }
+
+    final queuedItems = await DatabaseHelper.instance.getQueue();
+    if (queuedItems.isEmpty) return;
+
+    print('KUYRUKTA ${queuedItems.length} İŞLEM BULUNDU, GÖNDERİLİYOR...');
+
+    for (var item in queuedItems) {
+      try {
+        final tx = TransactionCreate(
+          categoryId: item['category_id'],
+          rawAmount: item['raw_amount'],
+        );
+        final response = await client.post(
+          Uri.parse('$baseUrl/transactions/'),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': mockUserId,
+          },
+          body: jsonEncode(tx.toJson()),
+        ).timeout(const Duration(seconds: 5));
+        
+        if (response.statusCode == 201 || response.statusCode == 202) {
+          print('KUYRUKTAKİ İŞLEM BAŞARIYLA GÖNDERİLDİ: ${item['id']}');
+          await DatabaseHelper.instance.deleteQueue(item['id']);
+        } else {
+          print('KUYRUK İŞLEMİ BAŞARISIZ (HTTP ${response.statusCode})');
+          break; // Stop sync if server returns an error
+        }
+      } catch (e) {
+        print('SYNC ERROR GÖNDERİRKEN: $e');
+        // Stop sync on first network error
+        break;
+      }
+    }
+  }
+}

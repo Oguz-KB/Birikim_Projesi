@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4, ConfigDict
+from pydantic import BaseModel, UUID4, ConfigDict, field_serializer
 from decimal import Decimal
 from datetime import datetime
 from typing import Optional
@@ -15,3 +15,7 @@ class PendingPurchaseOut(BaseModel):
     resolution: str
     resolved_at: Optional[datetime] = None
     resulting_transaction_id: Optional[UUID4] = None
+
+    @field_serializer("amount")
+    def serialize_decimal(self, value: Decimal, _info) -> str:
+        return str(value)
