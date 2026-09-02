@@ -11,7 +11,9 @@ import '../models/badge.dart';
 import 'database_helper.dart';
 
 class ApiClient {
-  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8000');
+  static const String baseUrl = 'https://birikim-backend.onrender.com';
+  
+  // Singleton pattern for caching the user ID
   static const String mockUserId = 'b2839315-a03e-49d5-9469-1ef9132e44fd';
 
   final http.Client client;
