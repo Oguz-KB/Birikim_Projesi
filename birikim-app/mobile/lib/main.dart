@@ -725,9 +725,16 @@ class _HomeScreenState extends State<HomeScreen> {
               : _currentIndex == 1
                   ? (_analyticsSummary != null ? AnalyticsScreen(summary: _analyticsSummary!) : const Center(child: CircularProgressIndicator()))
                   : _buildRecordsTab(),
-      floatingActionButton: _currentIndex == 0 ? FloatingActionButton(
+      floatingActionButton: _currentIndex == 0 ? FloatingActionButton.extended(
         onPressed: _openExpenseEntry,
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.deepOrangeAccent,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        icon: const Icon(Icons.add_shopping_cart, size: 28),
+        label: const Text(
+          'Harcama Gir', 
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
       ) : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
