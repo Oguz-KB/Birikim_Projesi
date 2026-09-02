@@ -2,6 +2,7 @@ services:
   - type: web
     name: birikim-backend
     env: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -e .
     preDeployCommand: alembic upgrade head
