@@ -7,6 +7,7 @@ import '../models/category.dart';
 import '../models/rule_settings.dart';
 import '../models/goal.dart';
 import '../models/analytics_summary.dart';
+import '../models/badge.dart';
 import 'database_helper.dart';
 
 class ApiClient {
@@ -111,6 +112,20 @@ class ApiClient {
       return AnalyticsSummary.fromJson(jsonDecode(response.body));
     } else {
       throw Exception('Failed to load analytics summary');
+    }
+  }
+
+  Future<List<BadgeCategory>> getBadges() async {
+    final response = await client.get(
+      Uri.parse('$baseUrl/analytics/badges'),
+      headers: {'x-user-id': mockUserId},
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((b) => BadgeCategory.fromJson(b)).toList();
+    } else {
+      throw Exception('Failed to load badges');
     }
   }
 

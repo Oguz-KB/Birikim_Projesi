@@ -88,3 +88,82 @@ def get_analytics_summary(x_user_id: UUID4 = Header(...), db: Session = Depends(
         "projection_text": projection_text,
         "category_breakdown": category_breakdown
     }
+
+@router.get("/badges")
+def get_badges(x_user_id: UUID4 = Header(...), db: Session = Depends(get_db)):
+    # 1. Days Active
+    user = db.get(models.User, x_user_id)
+    if not user:
+        days_active = 1
+    else:
+        now = datetime.now(timezone.utc)
+        created_at = user.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        days_active = max(1, (now - created_at).days)
+
+    # 2. Total Savings
+    stmt_total_savings = select(func.sum(models.Transaction.total_diverted)).where(
+        models.Transaction.user_id == x_user_id
+    )
+    total_savings = db.execute(stmt_total_savings).scalar() or Decimal('0.00')
+    total_savings_float = float(total_savings)
+
+    # 3. Abandoned Pending Purchases (Sabır Taşı)
+    stmt_abandoned = select(func.count(models.PendingPurchase.id)).where(
+        models.PendingPurchase.user_id == x_user_id,
+        models.PendingPurchase.resolution == 'abandoned'
+    )
+    abandoned_count = db.execute(stmt_abandoned).scalar() or 0
+
+    # Define Badges
+    categories = [
+        {
+            "id": "savings",
+            "name": "Tasarruf Ustası",
+            "description": "Bugüne kadar kumbaraya attığın toplam tutar.",
+            "current_value": total_savings_float,
+            "unit": "TL",
+            "badges": [
+                {"id": "sav_bronze", "name": "Acemi Birikimci", "tier": "bronze", "target": 500},
+                {"id": "sav_silver", "name": "İyi Birikimci", "tier": "silver", "target": 2500},
+                {"id": "sav_gold", "name": "Usta Birikimci", "tier": "gold", "target": 10000},
+            ]
+        },
+        {
+            "id": "patience",
+            "name": "Sabır Taşı",
+            "description": "Bekleme odasında süresi dolduğunda iradene sahip çıkıp 'Vazgeçtim' dediğin ürün sayısı.",
+            "current_value": abandoned_count,
+            "unit": "Ürün",
+            "badges": [
+                {"id": "pat_bronze", "name": "Kararlı", "tier": "bronze", "target": 1},
+                {"id": "pat_silver", "name": "İradeli", "tier": "silver", "target": 5},
+                {"id": "pat_gold", "name": "Münzevi", "tier": "gold", "target": 20},
+            ]
+        },
+        {
+            "id": "streak",
+            "name": "İstikrar",
+            "description": "Kayıt olduğun günden bugüne geçen aktif süre.",
+            "current_value": days_active,
+            "unit": "Gün",
+            "badges": [
+                {"id": "str_bronze", "name": "Hevesli", "tier": "bronze", "target": 7},
+                {"id": "str_silver", "name": "Sadık", "tier": "silver", "target": 30},
+                {"id": "str_gold", "name": "Efsane", "tier": "gold", "target": 100},
+            ]
+        }
+    ]
+
+    # Calculate status
+    for cat in categories:
+        current = cat["current_value"]
+        for b in cat["badges"]:
+            target = b["target"]
+            is_earned = current >= target
+            progress = min(1.0, float(current) / float(target)) if target > 0 else 1.0
+            b["is_earned"] = is_earned
+            b["progress"] = progress
+
+    return categories

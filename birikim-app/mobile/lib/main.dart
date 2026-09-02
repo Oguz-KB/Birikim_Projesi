@@ -14,6 +14,7 @@ import 'models/goal.dart';
 import 'models/analytics_summary.dart';
 import 'screens/analytics/analytics_screen.dart';
 import 'services/notification_service.dart';
+import 'screens/badges/badges_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
@@ -699,6 +700,14 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: _currentIndex == 1 ? null : AppBar(
         title: Text(_currentIndex == 0 ? 'Ana Ekran' : 'Kayıtlar'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.emoji_events, color: Colors.amber),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BadgesScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
