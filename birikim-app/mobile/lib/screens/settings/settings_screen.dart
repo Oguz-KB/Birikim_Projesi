@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_client.dart';
 import '../../models/rule_settings.dart';
+import '../../main.dart';
 import 'categories_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _roundupEnabled = false;
   double _selectedRoundupUnit = 10.0;
   final List<double> _roundupOptions = [10.0, 50.0, 100.0];
+  String _selectedTheme = 'system';
 
   @override
   void initState() {
@@ -37,6 +40,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       final settings = await _apiClient.getUserSettings();
+      final prefs = await SharedPreferences.getInstance();
+      final themeMode = prefs.getString('themeMode') ?? 'system';
+
       if (mounted) {
         setState(() {
           _taxRateCtrl.text = (settings.selfTaxRate * 100).toStringAsFixed(0);
@@ -48,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _selectedRoundupUnit = 10.0;
           }
           _roundupEnabled = settings.roundupEnabled;
+          _selectedTheme = themeMode;
           _isLoading = false;
         });
       }
@@ -146,6 +153,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    DropdownButtonFormField<String>(
+                      value: _selectedTheme,
+                      decoration: const InputDecoration(
+                        labelText: 'Görünüm Teması',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.brightness_6),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'system', child: Text('Sistem Varsayılanı')),
+                        DropdownMenuItem(value: 'light', child: Text('Açık Tema')),
+                        DropdownMenuItem(value: 'dark', child: Text('Koyu Tema')),
+                      ],
+                      onChanged: (val) async {
+                        if (val != null) {
+                          setState(() => _selectedTheme = val);
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('themeMode', val);
+                          if (val == 'light') themeNotifier.value = ThemeMode.light;
+                          if (val == 'dark') themeNotifier.value = ThemeMode.dark;
+                          if (val == 'system') themeNotifier.value = ThemeMode.system;
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     Card(
                       elevation: 2,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

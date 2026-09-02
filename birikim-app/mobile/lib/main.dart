@@ -15,9 +15,17 @@ import 'models/analytics_summary.dart';
 import 'screens/analytics/analytics_screen.dart';
 import 'services/notification_service.dart';
 
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
+  
+  final prefs = await SharedPreferences.getInstance();
+  final themeStr = prefs.getString('themeMode') ?? 'system';
+  if (themeStr == 'light') themeNotifier.value = ThemeMode.light;
+  if (themeStr == 'dark') themeNotifier.value = ThemeMode.dark;
+
   runApp(const BirikimApp());
 }
 
@@ -26,13 +34,35 @@ class BirikimApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Birikim',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (_, ThemeMode currentMode, __) {
+        return MaterialApp(
+          title: 'Birikim',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            primarySwatch: Colors.green,
+            brightness: Brightness.light,
+          ),
+          darkTheme: ThemeData(
+            primarySwatch: Colors.green,
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: Colors.grey[900],
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.grey[850],
+              foregroundColor: Colors.white,
+            ),
+            bottomNavigationBarTheme: BottomNavigationBarThemeData(
+              backgroundColor: Colors.grey[900],
+              selectedItemColor: Colors.green,
+              unselectedItemColor: Colors.grey,
+            ),
+            cardColor: Colors.grey[850],
+          ),
+          themeMode: currentMode,
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }
