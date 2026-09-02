@@ -25,7 +25,7 @@ class ApiClient {
       final response = await client.get(
         Uri.parse('$baseUrl/categories'),
         headers: {'x-user-id': mockUserId},
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         
@@ -63,7 +63,7 @@ class ApiClient {
         'x-user-id': mockUserId,
       },
       body: jsonEncode(category.toJson()),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 201) {
       return Category.fromJson(jsonDecode(response.body));
@@ -81,7 +81,7 @@ class ApiClient {
         'x-user-id': mockUserId,
       },
       body: jsonEncode(update.toJson()),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       return Category.fromJson(jsonDecode(response.body));
@@ -97,7 +97,7 @@ class ApiClient {
       headers: {
         'x-user-id': mockUserId,
       },
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 204) {
       throw Exception('Failed to delete category');
@@ -108,7 +108,7 @@ class ApiClient {
     final response = await client.get(
       Uri.parse('$baseUrl/analytics/summary'),
       headers: {'x-user-id': mockUserId},
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       return AnalyticsSummary.fromJson(jsonDecode(response.body));
@@ -121,7 +121,7 @@ class ApiClient {
     final response = await client.get(
       Uri.parse('$baseUrl/analytics/badges'),
       headers: {'x-user-id': mockUserId},
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
@@ -146,7 +146,7 @@ class ApiClient {
       final response = await client.get(
         Uri.parse('$baseUrl/transactions/'),
         headers: {'x-user-id': mockUserId},
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -165,7 +165,7 @@ class ApiClient {
       final response = await client.get(
         Uri.parse('$baseUrl/pending-purchases/'),
         headers: {'x-user-id': mockUserId},
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -187,7 +187,7 @@ class ApiClient {
         'x-user-id': mockUserId,
       },
       body: jsonEncode({'decision': decision}),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       return PendingPurchaseOut.fromJson(jsonDecode(response.body));
@@ -199,7 +199,7 @@ class ApiClient {
   Future<UserRuleSettings> getUserSettings() async {
     final response = await client.get(
       Uri.parse('$baseUrl/users/$mockUserId/settings'),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       return UserRuleSettings.fromJson(jsonDecode(response.body));
@@ -213,7 +213,7 @@ class ApiClient {
       Uri.parse('$baseUrl/users/$mockUserId/settings'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(update.toJson()),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       return UserRuleSettings.fromJson(jsonDecode(response.body));
@@ -226,7 +226,7 @@ class ApiClient {
     final response = await client.get(
       Uri.parse('$baseUrl/goals/'),
       headers: {'x-user-id': mockUserId},
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
@@ -244,7 +244,7 @@ class ApiClient {
         'x-user-id': mockUserId,
       },
       body: jsonEncode(goal.toJson()),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 201) {
       return GoalOut.fromJson(jsonDecode(response.body));
@@ -261,7 +261,7 @@ class ApiClient {
         'x-user-id': mockUserId,
       },
       body: jsonEncode(update.toJson()),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 200) {
       return GoalOut.fromJson(jsonDecode(response.body));
@@ -276,7 +276,7 @@ class ApiClient {
       headers: {
         'x-user-id': mockUserId,
       },
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode != 204) {
       throw Exception('Failed to delete goal');
@@ -294,7 +294,7 @@ class ApiClient {
         'x-user-id': mockUserId,
       },
       body: jsonEncode(body),
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 60));
 
     if (response.statusCode == 201) {
       return TransactionOut.fromJson(jsonDecode(response.body));
@@ -312,7 +312,7 @@ class ApiClient {
           'x-user-id': mockUserId,
         },
         body: jsonEncode(tx.toJson()),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 201) {
         return TransactionOut.fromJson(jsonDecode(response.body));
@@ -358,7 +358,7 @@ class ApiClient {
             'x-user-id': mockUserId,
           },
           body: jsonEncode(tx.toJson()),
-        ).timeout(const Duration(seconds: 5));
+        ).timeout(const Duration(seconds: 60));
         
         if (response.statusCode == 201 || response.statusCode == 202) {
           print('KUYRUKTAKİ İŞLEM BAŞARIYLA GÖNDERİLDİ: ${item['id']}');

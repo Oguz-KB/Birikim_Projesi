@@ -116,39 +116,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    final txs = await _apiClient.getTransactions();
-    final pendings = await _apiClient.getPendingPurchases();
-    final goals = await _apiClient.getGoals();
     
-    double calculatedSavings = 0.0;
-    for (var tx in txs) {
-      calculatedSavings += double.tryParse(tx.totalDiverted) ?? 0.0;
-    }
-
-    if (mounted) {
-      setState(() {
-        _transactions = txs.reversed.toList(); // Newest first
-        _pendingPurchases = pendings.reversed.toList();
-        _activeGoal = goals.isNotEmpty ? goals.first : null;
-        _totalSavings = calculatedSavings;
-        _isLoading = false;
-      });
-
-      try {
-        final summary = await _apiClient.getAnalyticsSummary();
-        if (mounted) {
-          setState(() {
-            _analyticsSummary = summary;
-          });
-        }
-        
-        // Haftalık projeksiyon bildirimini güncelle
-        if (summary.daysActive >= 7 && summary.projectionText.isNotEmpty) {
-          NotificationService().scheduleWeeklyProjection(summary.projectionText);
-        }
-      } catch (e) {
-        // Ignore analytics fetch error
+    try {
+      // Auto-provision user on the backend first
+      await _apiClient.getUserSettings();
+      
+      final txs = await _apiClient.getTransactions();
+      final pendings = await _apiClient.getPendingPurchases();
+      final goals = await _apiClient.getGoals();
+      
+      double calculatedSavings = 0.0;
+      for (var tx in txs) {
+        calculatedSavings += double.tryParse(tx.totalDiverted) ?? 0.0;
       }
+
+      if (mounted) {
+        setState(() {
+          _transactions = txs.reversed.toList(); // Newest first
+          _pendingPurchases = pendings.reversed.toList();
+          _activeGoal = goals.isNotEmpty ? goals.first : null;
+          _totalSavings = calculatedSavings;
+          _isLoading = false;
+        });
+
+        try {
+          final summary = await _apiClient.getAnalyticsSummary();
+          if (mounted) {
+            setState(() {
+              _analyticsSummary = summary;
+            });
+          }
+          
+          // Haftalık projeksiyon bildirimini güncelle
+          if (summary.daysActive >= 7 && summary.projectionText.isNotEmpty) {
+            NotificationService().scheduleWeeklyProjection(summary.projectionText);
+          }
+        } catch (e) {
+          // Ignore analytics fetch error
+        }
+      } // Closes if (mounted)
 
       // Milestone kontrolü
       if (_activeGoal != null && _activeGoal!.targetAmount > 0) {
@@ -169,6 +175,13 @@ class _HomeScreenState extends State<HomeScreen> {
           await prefs.setInt(milestoneKey, currentMilestone);
           NotificationService().showMilestoneNotification(currentMilestone);
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bağlantı bekleniyor... (Sunucu uyanıyor olabilir)')),
+        );
       }
     }
   }
