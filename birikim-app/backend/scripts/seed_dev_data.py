@@ -17,7 +17,7 @@ def seed_db():
         # Check if user exists
         dev_user = db.query(User).filter(User.email == "dev@birikim.app").first()
         if not dev_user:
-            dev_user = User(email="dev@birikim.app", display_name="Dev User")
+            dev_user = User(id="b2839315-a03e-49d5-9469-1ef9132e44fd", email="dev@birikim.app", display_name="Dev User")
             db.add(dev_user)
             db.commit()
             db.refresh(dev_user)

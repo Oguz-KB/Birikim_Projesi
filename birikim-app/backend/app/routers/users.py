@@ -17,8 +17,41 @@ def get_user_settings(user_id: UUID4, db: Session = Depends(get_db)):
         models.UserRuleSettings.valid_to.is_(None)
     )
     settings = db.execute(stmt).scalar_one_or_none()
+    
     if not settings:
-        raise HTTPException(status_code=404, detail="Active user settings not found")
+        # Check if user exists, if not, create them (Auto-provisioning)
+        user = db.get(models.User, user_id)
+        if not user:
+            user = models.User(id=user_id, email=f"{user_id}@birikim.app", display_name="Yeni Kullanıcı")
+            db.add(user)
+            db.commit()
+            
+            # Create default categories
+            default_categories = [
+                {"name": "Market", "is_guilty_pleasure": False, "penalty_multiplier": 1.0},
+                {"name": "Ulaşım", "is_guilty_pleasure": False, "penalty_multiplier": 1.0},
+                {"name": "Dışarıda Yemek", "is_guilty_pleasure": True, "penalty_multiplier": 3.0},
+                {"name": "Eğlence", "is_guilty_pleasure": False, "penalty_multiplier": 1.0},
+                {"name": "Diğer", "is_guilty_pleasure": False, "penalty_multiplier": 1.0},
+            ]
+            for cat_data in default_categories:
+                db.add(models.Category(user_id=user.id, **cat_data))
+                
+            # Create default settings
+            settings = models.UserRuleSettings(
+                user_id=user.id,
+                self_tax_rate=0.10,
+                roundup_enabled=True,
+                roundup_unit=10.00,
+                waiting_room_hours=24,
+                waiting_room_threshold=200.00
+            )
+            db.add(settings)
+            db.commit()
+            db.refresh(settings)
+        else:
+            raise HTTPException(status_code=404, detail="Active user settings not found")
+            
     return settings
 
 @router.put("/{user_id}/settings", response_model=UserRuleSettingsOut)
