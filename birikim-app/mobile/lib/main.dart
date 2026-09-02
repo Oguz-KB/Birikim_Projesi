@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/expense_entry/expense_entry_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/history/history_screen.dart';
@@ -12,9 +13,11 @@ import 'models/pending_purchase.dart';
 import 'models/goal.dart';
 import 'models/analytics_summary.dart';
 import 'screens/analytics/analytics_screen.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
   runApp(const BirikimApp());
 }
 
@@ -65,6 +68,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentTip = _tips[Random().nextInt(_tips.length)];
+    
+    // Bildirim izinlerini iste ve günlük özeti planla
+    NotificationService().requestPermissions().then((_) {
+      NotificationService().scheduleDailySummary();
+    });
+
     _apiClient.syncQueue().then((_) => _loadData());
     
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
@@ -101,8 +110,34 @@ class _HomeScreenState extends State<HomeScreen> {
             _analyticsSummary = summary;
           });
         }
+        
+        // Haftalık projeksiyon bildirimini güncelle
+        if (summary.daysActive >= 7 && summary.projectionText.isNotEmpty) {
+          NotificationService().scheduleWeeklyProjection(summary.projectionText);
+        }
       } catch (e) {
         // Ignore analytics fetch error
+      }
+
+      // Milestone kontrolü
+      if (_activeGoal != null && _activeGoal!.targetAmount > 0) {
+        final double progress = (_totalSavings / _activeGoal!.targetAmount).clamp(0.0, 1.0);
+        final int percentage = (progress * 100).floor();
+        
+        final prefs = await SharedPreferences.getInstance();
+        final String milestoneKey = 'milestone_${_activeGoal!.id}';
+        final int lastMilestone = prefs.getInt(milestoneKey) ?? 0;
+        
+        int currentMilestone = 0;
+        if (percentage >= 100) currentMilestone = 100;
+        else if (percentage >= 75) currentMilestone = 75;
+        else if (percentage >= 50) currentMilestone = 50;
+        else if (percentage >= 25) currentMilestone = 25;
+
+        if (currentMilestone > lastMilestone && currentMilestone > 0) {
+          await prefs.setInt(milestoneKey, currentMilestone);
+          NotificationService().showMilestoneNotification(currentMilestone);
+        }
       }
     }
   }

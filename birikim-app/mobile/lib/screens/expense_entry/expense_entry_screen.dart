@@ -3,6 +3,7 @@ import '../../models/category.dart';
 import '../../models/transaction.dart';
 import '../../models/pending_purchase.dart';
 import '../../services/api_client.dart';
+import '../../services/notification_service.dart';
 
 class ExpenseEntryScreen extends StatefulWidget {
   const ExpenseEntryScreen({Key? key}) : super(key: key);
@@ -66,9 +67,16 @@ class _ExpenseEntryScreenState extends State<ExpenseEntryScreen> {
     final result = await _apiClient.createTransaction(tx);
 
     if (result is PendingPurchaseOut) {
+      // Bildirimi kur
+      NotificationService().scheduleWaitingRoomExpiry(
+        result.id.hashCode,
+        _selectedCategory!.name,
+        DateTime.parse(result.expiresAt),
+      );
+
       scaffoldMessenger.showSnackBar(
         const SnackBar(
-          content: Text('⚠️ Bu harcama 24 saat bekleme odasında! Vazgeçersen birikime eklenecek.'),
+          content: Text('⚠️ Bu harcama bekleme odasında! Vazgeçersen birikime eklenecek.'),
           backgroundColor: Colors.orange,
         ),
       );
