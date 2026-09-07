@@ -17,6 +17,7 @@ class _ExpenseEntryScreenState extends State<ExpenseEntryScreen> {
   List<Category> _categories = [];
   Category? _selectedCategory;
   bool _isLoading = true;
+  bool _isSaving = false;
   String _amountString = "";
 
   Color _getColorForMultiplier(String multiplier) {
@@ -52,7 +53,11 @@ class _ExpenseEntryScreenState extends State<ExpenseEntryScreen> {
   }
 
   void _saveExpense() async {
-    if (_selectedCategory == null || _amountString.isEmpty) return;
+    if (_selectedCategory == null || _amountString.isEmpty || _isSaving) return;
+    
+    setState(() {
+      _isSaving = true;
+    });
     
     final tx = TransactionCreate(
       categoryId: _selectedCategory!.id,
@@ -174,12 +179,14 @@ class _ExpenseEntryScreenState extends State<ExpenseEntryScreen> {
                     height: 60,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: (_selectedCategory == null || _amountString.isEmpty) 
+                        backgroundColor: (_selectedCategory == null || _amountString.isEmpty || _isSaving) 
                             ? Colors.grey 
                             : Colors.green,
                       ),
-                      onPressed: (_selectedCategory == null || _amountString.isEmpty) ? null : _saveExpense,
-                      child: const Text('KAYDET', style: TextStyle(fontSize: 24, color: Colors.white)),
+                      onPressed: (_selectedCategory == null || _amountString.isEmpty || _isSaving) ? null : _saveExpense,
+                      child: _isSaving 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('KAYDET', style: TextStyle(fontSize: 24, color: Colors.white)),
                     ),
                   ),
                 )

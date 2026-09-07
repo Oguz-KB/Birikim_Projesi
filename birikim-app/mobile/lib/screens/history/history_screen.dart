@@ -32,7 +32,10 @@ class HistoryScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text('${tx.rawAmount} TL', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('+${tx.selfTaxAmount} TL Ceza', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                        if (double.tryParse(tx.selfTaxAmount) != null && double.parse(tx.selfTaxAmount) > 0)
+                          Text('+${tx.selfTaxAmount} TL Ceza', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                        if (double.tryParse(tx.roundupAmount) != null && double.parse(tx.roundupAmount) > 0)
+                          Text('+${tx.roundupAmount} TL Yuvarlama', style: const TextStyle(color: Colors.orange, fontSize: 12)),
                       ],
                     ),
                   ),
