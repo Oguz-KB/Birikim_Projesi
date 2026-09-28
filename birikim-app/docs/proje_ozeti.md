@@ -67,6 +67,5 @@ Projeyi başka bir yapay zekaya devredecekseniz veya onunla çalışacaksanız �
 1. **Faz 1 (Temel Çatı ve API):** Backend'deki `schema.sql`'in Alembic migration'larına dökülmesi, FastAPI router'larının ve "Kural Motoru"nun aktif edilmesi. (Bu süreçte Backend ve Mobil için bir API Sözleşmesi - Contract kilitlenmelidir).
 2. **Faz 2 (Mobil MVP):** Flutter uygulamasının "3 tıklamada harcama girme" ve çevrimdışı çalışma özelliklerinin oturtulması.
 3. **Faz 3 (Sosyal & Gelişmiş Özellikler):** Ortak hedeflerin (Co-op) entegre edilmesi, kullanıcıların başarı rozetleri (Achievements) kazanması.
-4. **Faz 4 (Otomasyon):** İlerleyen aşamalarda kameradan fiş okutarak otomatik kategori ve fiyat tespiti yapan Yapay Zeka servisinin bağlanması.
 
 Bu belgeyi okuyan bir Yapay Zeka; uygulamanın amacını, arka plandaki psikolojik kural motorunu, veritabanının değiştirilemez (immutable) yapısını ve kullanılacak dillerle kütüphaneleri eksiksiz anlayacaktır.

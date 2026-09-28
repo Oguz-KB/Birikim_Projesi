@@ -44,11 +44,11 @@ Proje modern ve ölçeklenebilir bir **Monorepo** yapısı kullanmaktadır.
  ┗ 📜 README.md       # Proje tanıtım dosyası (Bu dosya)
 ```
 
-## 🚀 Geliştirme Yol Haritası
-1. **Faz 1:** Backend mimarisi ve Kural Motoru'nun aktif edilmesi. API tasarımının yapılması.
-2. **Faz 2:** Flutter mobil uygulamasının temel (MVP) özelliklerinin geliştirilmesi ve çevrimdışı kullanım desteğinin sağlanması.
-3. **Faz 3:** Ortak hedefler (Co-op) ve oyunlaştırma (Rozetler) entegrasyonu.
-4. **Faz 4:** Kamera entegrasyonu ile fiş okuma ve harcama kategorizasyonu (AI destekli).
+## 🚀 Proje Durumu
+Şu anda proje, MVP (Minimum Viable Product) aşamasını başarıyla tamamlamıştır:
+- **Backend:** FastAPI ile kural motoru ve veri yönetimi aktif olarak çalışmaktadır.
+- **Mobil Uygulama:** Flutter ile geliştirilen arayüz, harcama girişi ve çevrimdışı çalışma (sqflite) yeteneklerine sahiptir.
+- **Gelecek Planları:** İlerleyen süreçte ortak hedefler (Co-op) ve oyunlaştırma (Rozetler) gibi sosyal özelliklerin eklenmesi planlanmaktadır.
 
 ---
 *Bu proje modern yazılım geliştirme pratikleri, temiz mimari (clean architecture) ve davranışsal psikoloji kurallarını bir araya getiren bir ürün olarak tasarlanmıştır.*
