@@ -4,6 +4,7 @@
 ![Flutter](https://img.shields.io/badge/mobile-Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/database-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Dart](https://img.shields.io/badge/language-Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 Geleneksel "bütçe takibi" uygulamalarının ötesine geçerek **davranışsal psikoloji ve oyunlaştırma** teknikleriyle kullanıcılarına çaba sarf ettirmeden birikim yaptıran yenilikçi bir mobil uygulama projesidir.
 
@@ -52,3 +53,7 @@ Proje modern ve ölçeklenebilir bir **Monorepo** yapısı kullanmaktadır.
 
 ---
 *Bu proje modern yazılım geliştirme pratikleri, temiz mimari (clean architecture) ve davranışsal psikoloji kurallarını bir araya getiren bir ürün olarak tasarlanmıştır.*
+
+## 📄 Lisans
+
+Bu proje **MIT Lisansı** ile lisanslanmıştır. Daha fazla bilgi için [LICENSE](LICENSE) dosyasına göz atabilirsiniz.
